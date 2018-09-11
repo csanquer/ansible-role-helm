@@ -1,0 +1,59 @@
+---
+- name: get helm version
+  shell: "helm version -c --template {% raw %}'{{ .Client.SemVer }}'{% endraw %}"
+  register: helm_result
+  ignore_errors: yes
+
+- name: set helm current version fact
+  set_fact:
+      helm_current_version: "{{ helm_result.stdout|default('')|replace('v','') }}"
+
+- name: get latest stable helm tag
+  uri:
+    url: "{{ helm_release_api_url }}"
+  ignore_errors: yes
+  register: helm_github_result
+  when: helm_version == 'latest'
+
+- name: set helm version fact
+  set_fact:
+       helm_version: "{{ helm_github_result.json.tag_name|default(helm_default_version)|replace('v','') }}"
+  when: helm_version == 'latest'
+
+- name: set helm version fact
+  set_fact:
+    helm_version: "{{ helm_default_version }}"
+  when: helm_version == '' or helm_version is none
+
+- name: "download helm binary {{ helm_version }}"
+  get_url:
+      url: "{{ helm_base_url }}v{{ helm_version }}-linux-amd64.tar.gz"
+      dest: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+      mode: 0644
+      force: yes
+  when: helm_current_version != helm_version
+
+- stat:
+    path: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+  register: helm_package_result
+
+- name: create temporary helm package directory
+  file:
+    path: "/tmp/helm-v{{ helm_version }}"
+    state: directory
+    mode: 'u=rwX,g=rX,o=rX'
+
+- name: extract helm archive
+  unarchive:
+    src: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+    dest:  "/tmp/helm-v{{ helm_version }}"
+    remote_src: yes
+  when: helm_current_version != helm_version and helm_package_result.stat.exists
+
+- name: copy helm binary
+  copy:
+    src:  "/tmp/helm-v{{ helm_version }}/linux-amd64/helm"
+    dest:  "/usr/local/bin/helm"
+    mode: 0755
+    force: yes
+  when: helm_current_version != helm_version and helm_package_result.stat.exists
