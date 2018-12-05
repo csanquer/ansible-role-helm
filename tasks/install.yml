@@ -15,12 +15,12 @@
   register: helm_github_result
   when: helm_version == 'latest'
 
-- name: set helm version fact
+- name: set helm version fact to latest
   set_fact:
        helm_version: "{{ helm_github_result.json.tag_name|default(helm_default_version)|replace('v','') }}"
   when: helm_version == 'latest'
 
-- name: set helm version fact
+- name: set helm version fact to default
   set_fact:
     helm_version: "{{ helm_default_version }}"
   when: helm_version == '' or helm_version is none
