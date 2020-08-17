@@ -1,0 +1,53 @@
+---
+- name: get helm version # noqa 301
+  command: "helm version --template {% raw %}'{{ .Version }}'{% endraw %}"
+  register: helm_result
+  ignore_errors: yes
+
+- name: set helm current version fact
+  set_fact:
+      helm_current_version: "{{ helm_result.stdout|default('')|replace('v','') }}"
+
+- name: set helm version fact to latest
+  set_fact:
+      helm_version: "{{ helm3_default_version }}"
+  when: helm_version == 'latest'
+
+- name: set helm version fact to default
+  set_fact:
+    helm_version: "{{ helm3_default_version }}"
+  when: not helm_version
+
+- name: "download helm binary {{ helm_version }}"
+  get_url:
+      url: "{{ helm_base_url }}v{{ helm_version }}-linux-amd64.tar.gz"
+      dest: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+      mode: 0644
+      force: yes
+  when: helm_current_version != helm_version
+
+- name: get info from helm archive
+  stat:
+    path: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+  register: helm_package_result
+
+- name: create temporary helm package directory
+  file:
+    path: "/tmp/helm-v{{ helm_version }}"
+    state: directory
+    mode: 'u=rwX,g=rX,o=rX'
+
+- name: extract helm archive
+  unarchive:
+    src: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+    dest:  "/tmp/helm-v{{ helm_version }}"
+    remote_src: yes
+  when: helm_current_version != helm_version and helm_package_result.stat.exists
+
+- name: copy helm binary
+  copy:
+    src:  "/tmp/helm-v{{ helm_version }}/linux-amd64/helm"
+    dest:  "/usr/local/bin/helm"
+    mode: 0755
+    force: yes
+  when: helm_current_version != helm_version and helm_package_result.stat.exists
