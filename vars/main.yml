@@ -1,7 +1,7 @@
 ---
 # vars file for helm
 helm2_default_version: '2.16.10'
-helm3_default_version: '3.3.0'
+helm3_default_version: '3.7.2'
 
 helm_release_api_url: https://api.github.com/repos/helm/helm/releases/latest
 

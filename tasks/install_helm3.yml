@@ -37,15 +37,20 @@
     state: directory
     mode: 'u=rwX,g=rX,o=rX'
 
+# - name: extract helm archive
+#   unarchive:
+#     src: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+#     dest:  "/tmp/helm-v{{ helm_version }}"
+#     remote_src: yes
+#   when: helm_current_version != helm_version and helm_package_result.stat.exists
+
 - name: extract helm archive
-  unarchive:
-    src: "/tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
-    dest:  "/tmp/helm-v{{ helm_version }}"
-    remote_src: yes
+  command: "tar -C /tmp/helm-v{{ helm_version }} -xvzf /tmp/helm-v{{ helm_version }}-linux-amd64.tar.gz"
   when: helm_current_version != helm_version and helm_package_result.stat.exists
 
 - name: copy helm binary
   copy:
+    remote_src: yes
     src:  "/tmp/helm-v{{ helm_version }}/linux-amd64/helm"
     dest:  "/usr/local/bin/helm"
     mode: 0755
